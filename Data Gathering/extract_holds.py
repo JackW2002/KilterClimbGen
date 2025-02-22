@@ -1,33 +1,27 @@
 import sqlite3
+import pandas as pd
+import os
 
-conn = sqlite3.connect('db/kilterklimbs')
-cursor = conn.cursor()
+current_dir = os.path.dirname(__file__)
 
+db_path = os.path.join(current_dir, "..", "db/kilterklimbs")
+
+conn = sqlite3.connect(os.path.abspath(db_path))
+
+# Define the SQL query
 query = """
-SELECT p.id, h.x, h.y
-FROM placements p
-JOIN holes h ON p.hole_id = h.id
-WHERE p.layout_id = 1;
+SELECT c.*, cc.*
+FROM climbs c
+JOIN climb_cache_fields cc ON c.uuid = cc.climb_uuid
+WHERE c.layout_id = 1;
 """
 
-cursor.execute(query)
+df = pd.read_sql_query(query, conn)
 
-results = cursor.fetchall()
+csv_path = os.path.join(current_dir, "..", "Data/climbs_export.csv")
 
-for placement_id, x, y in results:
-    print(f"Placement ID: {placement_id}, x: {x}, y: {y}")
+df.to_csv(os.path.abspath(csv_path), index=False)
 
-create_table_query = """
-CREATE TABLE IF NOT EXISTS placements_positions_filtered AS
-SELECT p.id AS placement_id, h.x, h.y
-FROM placements p
-JOIN holes h ON p.hole_id = h.id
-WHERE p.layout_id = 1
-  AND h.x > 3
-  AND h.x < 141;
-"""
-cursor.execute(create_table_query)
-conn.commit()
-
-cursor.close()
 conn.close()
+
+print("Data exported successfully to climbs_export.csv")
